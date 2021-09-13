@@ -9,18 +9,14 @@ import UIKit
 
 class TableViewController: UITableViewController {
     private let cellId = "cell"
-    private var categories: [Category] = []
-    private var sectionData = [SectionData]()
+    private var categories: [Category] = DataManager.shared.fetchCategories()
+    private var sectionData: [SectionData] = DataManager.shared.getSectionData()
     
     override func viewDidLoad() {
         super.viewDidLoad()
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: cellId)
-        sectionData = DataManager.shared.getSectionData()
-        
-        categories = DataManager.shared.fetchCategories()
         setupNavigationBar()
         tableView.reloadData()
-
     }
     
     override func viewWillAppear(_ animated: Bool) {
@@ -31,20 +27,15 @@ class TableViewController: UITableViewController {
     // MARK: - Table view data source
 
     override func numberOfSections(in tableView: UITableView) -> Int {
-        // #warning Incomplete implementation, return the number of sections
         return sectionData.count
     }
 
     override func tableView(_ tableView: UITableView, numberOfRowsInSection section: Int) -> Int {
-        // #warning Incomplete implementation, return the number of rows
         return sectionData[section].sectionObjects.count
     }
     
     override func tableView(_ tableView: UITableView, titleForHeaderInSection section: Int) -> String? {
-        let test = DateFormatter()//sectionData[section].sectionName
-        test.dateStyle = .short
-        let result = sectionData[section].sectionName
-        return result//DateFormatter().string(from: sectionData[section].sectionName)
+        return sectionData[section].sectionName
     }
     
 
@@ -57,18 +48,17 @@ class TableViewController: UITableViewController {
 
         var content = cell.defaultContentConfiguration()
         if record.type {
-            content.image = UIImage(systemName: "minus")?.withTintColor(.red, renderingMode: .alwaysOriginal)
-        } else {
             content.image = UIImage(systemName: "plus")?.withTintColor(.green, renderingMode: .alwaysOriginal)
+        } else {
+            content.image = UIImage(systemName: "minus")?.withTintColor(.red, renderingMode: .alwaysOriginal)
         }
-        //content.text = String(record.price)
-        if let foo = record.category {
-            content.secondaryText = foo.title
+        if let category = record.category {
+            content.secondaryText = category.title
         } else {
             content.secondaryText = "no category"
         }
-        if let foo = record.product {
-            content.text = "\(foo.title ?? "no product") \(String(record.price)) Руб"
+        if let product = record.product {
+            content.text = "\(product.title ?? "no product") \(String(record.price)) Руб"
         } else {
             content.text = "no product \(String(record.price)) Руб"
         }
@@ -78,34 +68,21 @@ class TableViewController: UITableViewController {
         return cell
     }
     
-
-    
-    // Override to support conditional editing of the table view.
     override func tableView(_ tableView: UITableView, canEditRowAt indexPath: IndexPath) -> Bool {
-        // Return false if you do not want the specified item to be editable.
         return true
     }
     
-
-    
-    // Override to support editing the table view.
     override func tableView(_ tableView: UITableView, commit editingStyle: UITableViewCell.EditingStyle, forRowAt indexPath: IndexPath) {
         if editingStyle == .delete {
-            // Delete the row from the data source
             DataManager.shared.deleteTask(record: sectionData[indexPath.section].sectionObjects[indexPath.row])
             sectionData[indexPath.section].sectionObjects.remove(at: indexPath.row)
             tableView.deleteRows(at: [indexPath], with: .fade)
             if sectionData[indexPath.section].sectionObjects.isEmpty == true {
-                //let indexSet = NSMutableIndexSet()
-                //indexSet.add(indexPath.section)
                 tableView.beginUpdates()
                 sectionData.remove(at: indexPath.section)
                 tableView.deleteSections(IndexSet(integer: indexPath.section), with: .left)
-                
                 tableView.endUpdates()
             }
-
-
         } else if editingStyle == .insert {
             // Create a new instance of the appropriate class, insert it into the array, and add a new row to the table view
             let detailRecord = DetailRecordViewController()
@@ -118,6 +95,7 @@ class TableViewController: UITableViewController {
         let detailRecord = DetailRecordViewController()
         detailRecord.modalPresentationStyle = .fullScreen
         detailRecord.update = true
+        detailRecord.categoryType = sectionData[indexPath.section].sectionObjects[indexPath.row].type
         detailRecord.record = sectionData[indexPath.section].sectionObjects[indexPath.row]
         present(detailRecord, animated: true)
     }

@@ -12,6 +12,8 @@ class DataManager {
     static var shared = DataManager()
     private let context = (UIApplication.shared.delegate as! AppDelegate).persistentContainer.viewContext
     
+    private init(){}
+    
     func getSectionData() -> [SectionData] {
         var result = [SectionData]()
         let data = getData()
@@ -60,11 +62,14 @@ class DataManager {
         return result
     }
     
-    func fetchCategories(type: Bool? = nil) -> [Category] {
+    func fetchCategories(title: String? = nil, type: Bool? = nil) -> [Category] {
         var categories: [Category] = []
         let fetchRequest: NSFetchRequest<Category> = Category.fetchRequest()
         if let poisk = type {
             fetchRequest.predicate = NSPredicate(format: "type == %@", NSNumber(booleanLiteral: poisk))
+        }
+        if let title = title {
+            fetchRequest.predicate = NSPredicate(format: "title == %@", NSString(string: title))
         }
         
         // true = prixod, false = rasxod
@@ -104,7 +109,7 @@ class DataManager {
         return product
     }
     
-    func saveRecord(product: String, price: Double, type: Int, category: Category, date: Date) {
+    func saveRecord(product: String, price: Double, type: Bool, category: String, date: Date) {
         guard let entityDescription = NSEntityDescription.entity(forEntityName: "Record", in: context) else { return }
         guard let record = NSManagedObject(entity: entityDescription, insertInto: context) as? Record else { return }
         var prod = fetchProduct(title: product)
@@ -113,10 +118,16 @@ class DataManager {
             prod = fetchProduct(title: product)
         }
         record.product = prod[0]
-        record.category = category
+        var cat = fetchCategories(title: category)
+        if cat.isEmpty {
+            saveCategory(title: category, type: type ? 1 : 0)
+            cat = fetchCategories(title: category)
+        }
+        
+        record.category = cat[0]
         record.date = date
         record.price = price
-        record.type = (type == 0) ? false : true
+        record.type = type
         //record.type = Boolean(type)
 
         if context.hasChanges {
@@ -128,17 +139,24 @@ class DataManager {
         }
     }
     
-    func updateRecord(product: String, record: Record, price: Double, type: Int, category: Category, date: Date) {
+    func updateRecord(product: String, record: Record, price: Double, type: Bool, category: String, date: Date) {
         var prod = fetchProduct(title: product)
         if prod.isEmpty {
             saveProduct(title: product)
             prod = fetchProduct(title: product)
         }
         record.product = prod[0]
-        record.category = category
+        
+        var cat = fetchCategories(title: category)
+        if cat.isEmpty {
+            saveCategory(title: category, type: type ? 1 : 0)
+            cat = fetchCategories(title: category)
+        }
+        
+        record.category = cat[0]
         record.date = date
         record.price = price
-        record.type = (type == 0) ? false : true
+        record.type = type//(type == 0) ? false : true
 
         if context.hasChanges {
             do {

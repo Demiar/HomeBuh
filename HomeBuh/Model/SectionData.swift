@@ -7,7 +7,6 @@
 
 import Foundation
 
-
 struct SectionData {
     var sectionName: String
     var sectionObjects: [Record]

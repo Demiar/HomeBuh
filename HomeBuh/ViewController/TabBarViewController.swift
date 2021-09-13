@@ -35,16 +35,20 @@ class TabBarViewController: UITabBarController {
         
         tabTwo.tabBarItem = tabTwoBarItem2
         
-        let controllers = [tabOne, tabTwo]
+        let tabThree = DiagramViewController()
+        let tabThreeBarItem3 = UITabBarItem(title: "Diagram",
+                                          image: UIImage(systemName: "house"),
+                                          selectedImage: UIImage(named: "house")
+        )
+        
+        tabThree.tabBarItem = tabThreeBarItem3
+        
+        let controllers = [tabOne, tabTwo, tabThree]
         self.viewControllers = controllers.map { UINavigationController(rootViewController: $0)}
     }
     
-    fileprivate func createNavController(for rootViewController: UIViewController,
-                                                    title: String,
-                                                    image: UIImage) -> UIViewController {
-        let navController = UINavigationController(rootViewController: rootViewController)
-        
-        return navController
-      }
+    private func createNavController(for rootViewController: UIViewController, title: String, image: UIImage) -> UIViewController {
+        return UINavigationController(rootViewController: rootViewController)
+    }
 
 }

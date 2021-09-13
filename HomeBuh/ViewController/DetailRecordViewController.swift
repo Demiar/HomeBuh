@@ -19,9 +19,7 @@ class DetailRecordViewController: UIViewController, UITextFieldDelegate {
     private lazy var datePickerValue: Date = Date()
 
     private lazy var selectedPicker: Int = 0
-
-    private lazy var typeSegmentedControl: UISegmentedControl = UISegmentedControl(items: ["Приход", "Расход"])
-    
+ 
     private let scrollView: UIScrollView = {
         let v = UIScrollView()
         v.contentSize = CGSize(width: UIScreen.main.bounds.width, height: 800)
@@ -31,21 +29,17 @@ class DetailRecordViewController: UIViewController, UITextFieldDelegate {
     
     private var datePicker: UIDatePicker = UIDatePicker()
     
-    private lazy var taskTextField: UITextField = {
+    private lazy var priceTextField: UITextField = {
         let textField = UITextField()
+        //textField.borderStyle = .line
         textField.placeholder = "Сумма"
         textField.textColor = .darkGray
         textField.borderStyle = .roundedRect
         return textField
     }()
     
-    private lazy var searchField: UITextField = {
-        let textField = UITextField()
-        textField.placeholder = "Товар"
-        textField.textColor = .darkGray
-        textField.borderStyle = .roundedRect
-        return textField
-    }()
+    private lazy var searchField = SearchTextField(frame: CGRect(x: 10, y: 100, width: 200, height: 40))
+    private lazy var categorySearchField = SearchTextField(frame: CGRect(x: 10, y: 100, width: 200, height: 40))
     
     private lazy var saveButton: UIButton = {
         let button = UIButton().customButton(colorButton: UIColor(
@@ -81,42 +75,44 @@ class DetailRecordViewController: UIViewController, UITextFieldDelegate {
         categories = DataManager.shared.fetchCategories(type: categoryType)
         products = DataManager.shared.fetchProducts()
         self.view.addSubview(scrollView)
-        typeSegmentedControl.selectedSegmentIndex = 1
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "dd/MM/yyyy"
         datePickerValue = datePicker.date
-        self.categoriesPicker.dataSource = self
-        self.categoriesPicker.delegate = self
         datePicker.date = Date()
         datePicker.locale = .current
-        datePicker.preferredDatePickerStyle = .wheels
+        datePicker.preferredDatePickerStyle = .compact
         datePicker.datePickerMode = UIDatePicker.Mode.date
         datePicker.addTarget(self, action: #selector(datePickerValueChanged(_:)), for: .valueChanged)
+        searchField.borderStyle = .roundedRect
+        searchField.placeholder = "Продукт"
+        categorySearchField.borderStyle = .roundedRect
+        categorySearchField.placeholder = "КАтегория"
         
-        setupViews([searchField, taskTextField, categoriesPicker, datePicker, typeSegmentedControl, saveButton, cancelButton])
+        setupViews([searchField, priceTextField, categorySearchField, datePicker, saveButton, cancelButton])
         setConstraints()
+        
+        var filterString = [""]
+        for product in products {
+            filterString.append(product.title ?? "")
+        }
+        searchField.filterStrings(filterString)
+        filterString = [""]
+        for category in categories {
+            filterString.append(category.title ?? "")
+        }
+        categorySearchField.filterStrings(filterString)
         
         searchField.becomeFirstResponder()
         if update == true {
             guard let record = record else { return }
             searchField.text = record.product?.title
-            taskTextField.text = String(record.price)
+            priceTextField.text = String(record.price)
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "dd/MM/yyyy"
             dateFormatter.locale = .current
             datePicker.date = record.date ?? Date()
             datePickerValue = record.date ?? Date()
-            for i in 0...categories.count {
-                if categories[i].title == record.category?.title {
-                    categoriesPicker.selectRow(i, inComponent: 0, animated: true)
-                    break
-                }
-            }
-            if record.type {
-                typeSegmentedControl.selectedSegmentIndex = 1
-            } else {
-                typeSegmentedControl.selectedSegmentIndex = 0
-            }
+            categorySearchField.text = record.category?.title
             
         }
     }
@@ -143,22 +139,23 @@ class DetailRecordViewController: UIViewController, UITextFieldDelegate {
 
     
     @objc private func save() {
-        if taskTextField.text == "" { return }
-        guard let text = taskTextField.text else { return }
+        if priceTextField.text == "" { return }
+        guard let text = priceTextField.text else { return }
+        if categories.isEmpty { return }
         if update {
             guard let record = record else { return }
             DataManager.shared.updateRecord(product: searchField.text ?? "no product",
                                             record: record,
                                             price: Double(text)!,
-                                            type: typeSegmentedControl.selectedSegmentIndex,
-                                            category: categories[selectedPicker],
+                                            type: categoryType,//typeSegmentedControl.selectedSegmentIndex,
+                                            category: categorySearchField.text ?? "no category",//categories[selectedPicker],
                                             date: datePickerValue
             )
         } else {
             DataManager.shared.saveRecord(product: searchField.text ?? "no product",
                                           price: Double(text)!,
-                                          type: typeSegmentedControl.selectedSegmentIndex,
-                                          category: categories[selectedPicker],
+                                          type: categoryType,//typeSegmentedControl.selectedSegmentIndex,
+                                          category: categorySearchField.text ?? "no category",//categories[selectedPicker],
                                           date: datePickerValue
             )
         }
@@ -170,12 +167,6 @@ class DetailRecordViewController: UIViewController, UITextFieldDelegate {
         dismiss(animated: true)
     }
     
-//    private func removeTimeStamp(fromDate: Date) -> Date {
-//        guard let date = Calendar.current.date(from: Calendar.current.dateComponents([.year, .month, .day], from: fromDate)) else {
-//            fatalError("Failed to strip time from Date object")
-//        }
-//        return date
-//    }
 }
 
 
@@ -198,42 +189,34 @@ extension DetailRecordViewController {
             searchField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40)
         ])
         
-        taskTextField.translatesAutoresizingMaskIntoConstraints = false
+        priceTextField.translatesAutoresizingMaskIntoConstraints = false
 
         NSLayoutConstraint.activate([
-            taskTextField.topAnchor.constraint(equalTo: searchField.topAnchor, constant: 80),
-            taskTextField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
-            taskTextField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40)
+            priceTextField.topAnchor.constraint(equalTo: searchField.topAnchor, constant: 80),
+            priceTextField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
+            priceTextField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40)
         ])
         
-        categoriesPicker.translatesAutoresizingMaskIntoConstraints = false
+        categorySearchField.translatesAutoresizingMaskIntoConstraints = false
 
         NSLayoutConstraint.activate([
-            categoriesPicker.topAnchor.constraint(equalTo: taskTextField.bottomAnchor, constant: 20),
-            categoriesPicker.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
-            categoriesPicker.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40)
+            categorySearchField.topAnchor.constraint(equalTo: priceTextField.bottomAnchor, constant: 20),
+            categorySearchField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
+            categorySearchField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40)
         ])
         
         datePicker.translatesAutoresizingMaskIntoConstraints = false
 
         NSLayoutConstraint.activate([
-            datePicker.topAnchor.constraint(equalTo: categoriesPicker.bottomAnchor, constant: 20),
+            datePicker.topAnchor.constraint(equalTo: categorySearchField.bottomAnchor, constant: 20),
             datePicker.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
             datePicker.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40)
-        ])
-        
-        typeSegmentedControl.translatesAutoresizingMaskIntoConstraints = false
-
-        NSLayoutConstraint.activate([
-            typeSegmentedControl.topAnchor.constraint(equalTo: datePicker.bottomAnchor, constant: 20),
-            typeSegmentedControl.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
-            typeSegmentedControl.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40)
         ])
 
         saveButton.translatesAutoresizingMaskIntoConstraints = false
 
         NSLayoutConstraint.activate([
-            saveButton.topAnchor.constraint(equalTo: typeSegmentedControl.bottomAnchor, constant: 20),
+            saveButton.topAnchor.constraint(equalTo: datePicker.bottomAnchor, constant: 20),
             saveButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
             saveButton.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40)
         ])
@@ -249,21 +232,21 @@ extension DetailRecordViewController {
 }
 
 
-// MARK: UIPicker
-extension DetailRecordViewController: UIPickerViewDataSource, UIPickerViewDelegate {
-    func numberOfComponents(in pickerView: UIPickerView) -> Int {
-        1
-    }
-    
-    func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
-        categories.count
-    }
-    
-    func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
-        return categories[row].title
-    }
-    
-    func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
-        selectedPicker = row
-    }
-}
+//// MARK: UIPicker
+//extension DetailRecordViewController: UIPickerViewDataSource, UIPickerViewDelegate {
+//    func numberOfComponents(in pickerView: UIPickerView) -> Int {
+//        1
+//    }
+//
+//    func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
+//        categories.count
+//    }
+//
+//    func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
+//        return categories[row].title
+//    }
+//
+//    func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
+//        selectedPicker = row
+//    }
+//}

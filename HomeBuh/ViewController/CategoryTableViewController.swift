@@ -8,13 +8,12 @@
 import UIKit
 
 class CategoryTableViewController: UITableViewController {
-    var categories: [Category] = []
+    var categories: [Category] = DataManager.shared.fetchCategories()
     private let cellId = "cell"
 
     override func viewDidLoad() {
         super.viewDidLoad()
         tableView.register(UITableViewCell.self, forCellReuseIdentifier: cellId)
-        categories = DataManager.shared.fetchCategories()
         setupNavigationBar()
     }
 
