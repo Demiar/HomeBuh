@@ -109,7 +109,7 @@ class DataManager {
         return product
     }
     
-    func saveRecord(product: String, price: Double, type: Bool, category: String, date: Date) {
+    func saveRecord(product: String, price: Double, type: Bool, category: String, date: Date, count: Double = 1.0) {
         guard let entityDescription = NSEntityDescription.entity(forEntityName: "Record", in: context) else { return }
         guard let record = NSManagedObject(entity: entityDescription, insertInto: context) as? Record else { return }
         var prod = fetchProduct(title: product)
@@ -123,7 +123,7 @@ class DataManager {
             saveCategory(title: category, type: type ? 1 : 0)
             cat = fetchCategories(title: category)
         }
-        
+        record.count = Double(count)
         record.category = cat[0]
         record.date = date
         record.price = price
@@ -139,7 +139,7 @@ class DataManager {
         }
     }
     
-    func updateRecord(product: String, record: Record, price: Double, type: Bool, category: String, date: Date) {
+    func updateRecord(product: String, record: Record, price: Double, type: Bool, category: String, date: Date, count: Double) {
         var prod = fetchProduct(title: product)
         if prod.isEmpty {
             saveProduct(title: product)
@@ -152,7 +152,7 @@ class DataManager {
             saveCategory(title: category, type: type ? 1 : 0)
             cat = fetchCategories(title: category)
         }
-        
+        record.count = Double(count)
         record.category = cat[0]
         record.date = date
         record.price = price

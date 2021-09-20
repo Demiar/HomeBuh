@@ -14,11 +14,12 @@ class DetailRecordViewController: UIViewController, UITextFieldDelegate {
     var record: Record?
     var update = false
     var categoryType: Bool = false
-    
-    private lazy var categoriesPicker: UIPickerView = UIPickerView()
-    private lazy var datePickerValue: Date = Date()
+    var dataManager = DataManager.shared
 
-    private lazy var selectedPicker: Int = 0
+    private var recordView: RecordView?
+    
+    private lazy var datePicker: UIDatePicker = UIDatePicker()
+    private lazy var datePickerValue: Date = Date()
  
     private let scrollView: UIScrollView = {
         let v = UIScrollView()
@@ -26,20 +27,6 @@ class DetailRecordViewController: UIViewController, UITextFieldDelegate {
         v.translatesAutoresizingMaskIntoConstraints = false
         return v
     }()
-    
-    private var datePicker: UIDatePicker = UIDatePicker()
-    
-    private lazy var priceTextField: UITextField = {
-        let textField = UITextField()
-        //textField.borderStyle = .line
-        textField.placeholder = "Сумма"
-        textField.textColor = .darkGray
-        textField.borderStyle = .roundedRect
-        return textField
-    }()
-    
-    private lazy var searchField = SearchTextField(frame: CGRect(x: 10, y: 100, width: 200, height: 40))
-    private lazy var categorySearchField = SearchTextField(frame: CGRect(x: 10, y: 100, width: 200, height: 40))
     
     private lazy var saveButton: UIButton = {
         let button = UIButton().customButton(colorButton: UIColor(
@@ -72,8 +59,11 @@ class DetailRecordViewController: UIViewController, UITextFieldDelegate {
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .white
-        categories = DataManager.shared.fetchCategories(type: categoryType)
-        products = DataManager.shared.fetchProducts()
+        recordView = RecordView(categoryType: categoryType)
+        guard let recordView = recordView else { return }
+        recordView.categoryType = categoryType
+        categories = dataManager.fetchCategories(type: categoryType)
+        products = dataManager.fetchProducts()
         self.view.addSubview(scrollView)
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "dd/MM/yyyy"
@@ -83,39 +73,39 @@ class DetailRecordViewController: UIViewController, UITextFieldDelegate {
         datePicker.preferredDatePickerStyle = .compact
         datePicker.datePickerMode = UIDatePicker.Mode.date
         datePicker.addTarget(self, action: #selector(datePickerValueChanged(_:)), for: .valueChanged)
-        searchField.borderStyle = .roundedRect
-        searchField.placeholder = "Продукт"
-        categorySearchField.borderStyle = .roundedRect
-        categorySearchField.placeholder = "КАтегория"
-        
-        setupViews([searchField, priceTextField, categorySearchField, datePicker, saveButton, cancelButton])
+        recordView.productCount.text = "1"
+        setupViews([recordView, datePicker, saveButton, cancelButton])
         setConstraints()
         
         var filterString = [""]
         for product in products {
             filterString.append(product.title ?? "")
         }
-        searchField.filterStrings(filterString)
+        recordView.productTextField.filterStrings(filterString)
         filterString = [""]
         for category in categories {
             filterString.append(category.title ?? "")
         }
-        categorySearchField.filterStrings(filterString)
+        recordView.categorySearchField.filterStrings(filterString)
         
-        searchField.becomeFirstResponder()
+        recordView.productTextField.becomeFirstResponder()
         if update == true {
             guard let record = record else { return }
-            searchField.text = record.product?.title
-            priceTextField.text = String(record.price)
+            recordView.categoryType = record.type
+            recordView.productTextField.text = record.product?.title
+            recordView.priceTextField.text = String(record.price)
+            recordView.categorySearchField.text = record.category?.title
+            recordView.productCount.text = String(record.count)
             let dateFormatter = DateFormatter()
             dateFormatter.dateFormat = "dd/MM/yyyy"
             dateFormatter.locale = .current
             datePicker.date = record.date ?? Date()
             datePickerValue = record.date ?? Date()
-            categorySearchField.text = record.category?.title
+
             
         }
     }
+
     
     private func setupViews(_ views: [UIView]) {
         views.forEach {
@@ -124,39 +114,34 @@ class DetailRecordViewController: UIViewController, UITextFieldDelegate {
     }
     
     @objc func datePickerValueChanged(_ sender: UIDatePicker){
-        
-        // Create date formatter
         let dateFormatter: DateFormatter = DateFormatter()
-        
-        // Set date format
         dateFormatter.dateFormat = "dd/MM/yyyy"
-        
-        // Apply date format
-        let selectedDate: String = dateFormatter.string(from: sender.date)
         datePickerValue = sender.date
-        print("Selected value \(selectedDate)")
     }
 
     
     @objc private func save() {
-        if priceTextField.text == "" { return }
-        guard let text = priceTextField.text else { return }
+        guard let recordView = recordView else { return }
+        if recordView.priceTextField.text == "" { return }
+        guard let price = recordView.priceTextField.text else { return }
         if categories.isEmpty { return }
         if update {
             guard let record = record else { return }
-            DataManager.shared.updateRecord(product: searchField.text ?? "no product",
+            dataManager.updateRecord(product: recordView.productTextField.text ?? "no product",
                                             record: record,
-                                            price: Double(text)!,
+                                            price: Double(price)!,
                                             type: categoryType,//typeSegmentedControl.selectedSegmentIndex,
-                                            category: categorySearchField.text ?? "no category",//categories[selectedPicker],
-                                            date: datePickerValue
+                                            category: recordView.categorySearchField.text ?? "no category",//categories[selectedPicker],
+                                            date: datePickerValue,
+                                            count: Double(recordView.productCount.text ?? "") ?? 1.0
             )
         } else {
-            DataManager.shared.saveRecord(product: searchField.text ?? "no product",
-                                          price: Double(text)!,
+            dataManager.saveRecord(product: recordView.productTextField.text ?? "no product",
+                                          price: Double(price)!,
                                           type: categoryType,//typeSegmentedControl.selectedSegmentIndex,
-                                          category: categorySearchField.text ?? "no category",//categories[selectedPicker],
-                                          date: datePickerValue
+                                          category: recordView.categorySearchField.text ?? "no category",//categories[selectedPicker],
+                                          date: datePickerValue,
+                                          count: Double(recordView.productCount.text ?? "") ?? 1.0
             )
         }
 
@@ -167,12 +152,18 @@ class DetailRecordViewController: UIViewController, UITextFieldDelegate {
         dismiss(animated: true)
     }
     
+    @objc private func addView() {
+        dismiss(animated: true)
+    }
+    
 }
 
 
 // MARK: Constraints
 extension DetailRecordViewController {
     private func setConstraints() {
+        guard let recordView = recordView else { return }
+        scrollView.translatesAutoresizingMaskIntoConstraints = false
         
         NSLayoutConstraint.activate([
             scrollView.leftAnchor.constraint(equalTo: view.leftAnchor, constant: 2.0),
@@ -181,34 +172,18 @@ extension DetailRecordViewController {
             scrollView.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -2.0)
         ])
         
-        searchField.translatesAutoresizingMaskIntoConstraints = false
+        recordView.translatesAutoresizingMaskIntoConstraints = false
         
         NSLayoutConstraint.activate([
-            searchField.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 80),
-            searchField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
-            searchField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40)
-        ])
-        
-        priceTextField.translatesAutoresizingMaskIntoConstraints = false
-
-        NSLayoutConstraint.activate([
-            priceTextField.topAnchor.constraint(equalTo: searchField.topAnchor, constant: 80),
-            priceTextField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
-            priceTextField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40)
-        ])
-        
-        categorySearchField.translatesAutoresizingMaskIntoConstraints = false
-
-        NSLayoutConstraint.activate([
-            categorySearchField.topAnchor.constraint(equalTo: priceTextField.bottomAnchor, constant: 20),
-            categorySearchField.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
-            categorySearchField.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40)
+            recordView.topAnchor.constraint(equalTo: scrollView.topAnchor, constant: 80),
+            recordView.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
+            recordView.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40)
         ])
         
         datePicker.translatesAutoresizingMaskIntoConstraints = false
 
         NSLayoutConstraint.activate([
-            datePicker.topAnchor.constraint(equalTo: categorySearchField.bottomAnchor, constant: 20),
+            datePicker.topAnchor.constraint(equalTo: recordView.bottomAnchor, constant: 20),
             datePicker.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 40),
             datePicker.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -40)
         ])
@@ -230,23 +205,3 @@ extension DetailRecordViewController {
         ])
     }
 }
-
-
-//// MARK: UIPicker
-//extension DetailRecordViewController: UIPickerViewDataSource, UIPickerViewDelegate {
-//    func numberOfComponents(in pickerView: UIPickerView) -> Int {
-//        1
-//    }
-//
-//    func pickerView(_ pickerView: UIPickerView, numberOfRowsInComponent component: Int) -> Int {
-//        categories.count
-//    }
-//
-//    func pickerView(_ pickerView: UIPickerView, titleForRow row: Int, forComponent component: Int) -> String? {
-//        return categories[row].title
-//    }
-//
-//    func pickerView(_ pickerView: UIPickerView, didSelectRow row: Int, inComponent component: Int) {
-//        selectedPicker = row
-//    }
-//}

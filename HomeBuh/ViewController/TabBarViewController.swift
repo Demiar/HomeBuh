@@ -19,7 +19,7 @@ class TabBarViewController: UITabBarController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
 
-        let tabOne = TableViewController()
+        let tabOne = RecordsTableViewController()
         let tabOneBarItem = UITabBarItem(title: "Records",
                                          image: UIImage(systemName: "magnifyingglass"),
                                          selectedImage: UIImage(named: "magnifyingglass")

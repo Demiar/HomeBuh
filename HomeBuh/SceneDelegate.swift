@@ -20,6 +20,7 @@ class SceneDelegate: UIResponder, UIWindowSceneDelegate {
         window = UIWindow(frame: windowScene.coordinateSpace.bounds)
         window?.windowScene = windowScene
         window?.rootViewController = TabBarViewController()//UINavigationController(rootViewController: TabBarViewController())
+        //window?.rootViewController = DetailRecordCollectionViewController(collectionViewLayout: UICollectionViewFlowLayout())
         window?.makeKeyAndVisible()
     }
 

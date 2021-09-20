@@ -7,7 +7,7 @@
 
 import UIKit
 
-class TableViewController: UITableViewController {
+class RecordsTableViewController: UITableViewController {
     private let cellId = "cell"
     private var categories: [Category] = DataManager.shared.fetchCategories()
     private var sectionData: [SectionData] = DataManager.shared.getSectionData()
@@ -141,6 +141,10 @@ class TableViewController: UITableViewController {
         let detailRecord = DetailRecordViewController()
         detailRecord.modalPresentationStyle = .fullScreen
         detailRecord.categoryType = categoryType
+        //let detailRecord = DetailRecordCollectionViewController(collectionViewLayout: UICollectionViewFlowLayout())
+        //detailRecord.modalPresentationStyle = .fullScreen
+        //detailRecord.categoryType = categoryType
+        
         present(detailRecord, animated: true)
     }
     
